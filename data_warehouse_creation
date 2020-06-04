@@ -1,0 +1,207 @@
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
+
+CREATE SCHEMA IF NOT EXISTS `nhsdw` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci ;
+USE `nhsdw` ;
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`patient`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`patient` (
+  `patient_id` INT NOT NULL,
+  `patient_dob` DATE NULL,
+  `patient_dod` DATE NULL,
+  `patient_occupation` VARCHAR(50) NULL,
+  `patient_fname` VARCHAR(50) NULL,
+  `patient_sname` VARCHAR(50) NULL,
+  `patient_address` VARCHAR(60) NULL,
+  `patient_city` VARCHAR(50) NULL,
+  `patient_country` VARCHAR(50) NULL,
+  `patient_sex` VARCHAR(10) NULL,
+  `genes` VARCHAR(45) NULL,
+  PRIMARY KEY (`patient_id`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`treatment_unit`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`treatment_unit` (
+  `unit_code` INT NOT NULL,
+  `unit_type` VARCHAR(50) NULL,
+  `unit_country` VARCHAR(50) NULL,
+  `unit_city` VARCHAR(50) NULL,
+  PRIMARY KEY (`unit_code`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`staff`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`staff` (
+  `staff_id` INT NOT NULL,
+  `staff_dob` DATE NULL,
+  `staff_fname` VARCHAR(50) NULL,
+  `staff_lname` VARCHAR(50) NULL,
+  `staff_sex` VARCHAR(50) NULL,
+  `staff_level` INT NULL,
+  `staff_specialization` VARCHAR(50) NULL,
+  PRIMARY KEY (`staff_id`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`drug`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`drug` (
+  `drug_code` INT NOT NULL,
+  `drug_name` VARCHAR(100) NULL,
+  `drug_cost` DECIMAL(11,2) NULL,
+  `drug_type` VARCHAR(100) NULL,
+  `drug_coating` VARCHAR(50) NULL,
+  `drug_mindose_mg` INT NULL,
+  `drug_maxdose_mg` INT NULL,
+  PRIMARY KEY (`drug_code`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`operation`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`operation` (
+  `operation_id` INT NOT NULL,
+  `opreation_type` VARCHAR(50) NULL,
+  `operation_risklevel` INT NULL,
+  PRIMARY KEY (`operation_id`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`treatment`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`treatment` (
+  `treatment_id` INT NOT NULL,
+  `treatment_type` VARCHAR(50) NULL,
+  `diagnosis` VARCHAR(500) NULL,
+  `operation_id` INT NOT NULL,
+  PRIMARY KEY (`treatment_id`, `operation_id`),
+  INDEX `fk_treatment_operation1_idx` (`operation_id` ASC),
+  CONSTRAINT `fk_treatment_operation1`
+    FOREIGN KEY (`operation_id`)
+    REFERENCES `nhsdw`.`operation` (`operation_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`treatment_drug`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`treatment_drug` (
+  `treatment_id` INT NOT NULL,
+  `drug_id` INT NULL,
+  `treatment_drug_date` DATE NULL,
+  `treatment_drug_duration` INT NULL,
+  `treatment_drug_cost` DECIMAL(11,2) NULL,
+  PRIMARY KEY (`treatment_id`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`treatment_operation`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`treatment_operation` (
+  `treatment_id` INT NOT NULL,
+  `operation_code` INT NULL,
+  `treatment_drug_date` DATE NULL,
+  `treatment_drug_duration` VARCHAR(45) NULL,
+  `treatment_drug_cost` DECIMAL(11,2) NULL,
+  PRIMARY KEY (`treatment_id`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`calendar`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`calendar` (
+  `date_id` INT NOT NULL,
+  `date_display` DATE NULL,
+  `date_day` DECIMAL(2,0) NULL,
+  `date_week` DECIMAL(2,0) NULL,
+  `date_month` DECIMAL(2,0) NULL,
+  `date_year` DECIMAL(4,0) NULL,
+  `date_quarter` INT NULL,
+  PRIMARY KEY (`date_id`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`establishment`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`establishment` (
+  `establishment_code` INT NOT NULL,
+  `establishment_name` VARCHAR(100) NULL,
+  `establishment_type` VARCHAR(100) NULL,
+  `establishment_country` VARCHAR(50) NULL,
+  `establishment_city` VARCHAR(50) NULL,
+  `establishment_postcode` VARCHAR(10) NULL,
+  PRIMARY KEY (`establishment_code`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `nhsdw`.`DRUG_INTAKE_FACT`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nhsdw`.`DRUG_INTAKE_FACT` (
+  `drug_code` INT NOT NULL,
+  `calendar_id` INT NOT NULL,
+  `treatment_id` INT NOT NULL,
+  `patient_id` INT NOT NULL,
+  `staff_id` INT NOT NULL,
+  `establishment_code` INT NOT NULL,
+  `medication_quantity` INT NULL,
+  `medication_cost` DECIMAL(11,2) NULL,
+  `medication_duration_days` DECIMAL(2,0) NULL,
+  PRIMARY KEY (`drug_code`, `calendar_id`, `treatment_id`, `patient_id`, `staff_id`, `establishment_code`),
+  INDEX `fk_medication_fact_date1_idx` (`calendar_id` ASC),
+  INDEX `fk_medication_fact_treatment1_idx` (`treatment_id` ASC),
+  INDEX `fk_medication_fact_patient1_idx` (`patient_id` ASC),
+  INDEX `fk_medication_fact_staff1_idx` (`staff_id` ASC),
+  INDEX `fk_medication_fact_establishment1_idx` (`establishment_code` ASC),
+  CONSTRAINT `fk_medication_fact_drug`
+    FOREIGN KEY (`drug_code`)
+    REFERENCES `nhsdw`.`drug` (`drug_code`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_medication_fact_date1`
+    FOREIGN KEY (`calendar_id`)
+    REFERENCES `nhsdw`.`calendar` (`date_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_medication_fact_treatment1`
+    FOREIGN KEY (`treatment_id`)
+    REFERENCES `nhsdw`.`treatment` (`treatment_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_medication_fact_patient1`
+    FOREIGN KEY (`patient_id`)
+    REFERENCES `nhsdw`.`patient` (`patient_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_medication_fact_staff1`
+    FOREIGN KEY (`staff_id`)
+    REFERENCES `nhsdw`.`staff` (`staff_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_medication_fact_establishment1`
+    FOREIGN KEY (`establishment_code`)
+    REFERENCES `nhsdw`.`establishment` (`establishment_code`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
