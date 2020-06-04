@@ -1,0 +1,68 @@
+/* This query gives the NHS insight into the number of patients each hospital has and the average cost associated with them. */
+SELECT establishment.establishment_name AS `Hospital Name`, SUM(DRUG_INTAKE_FACT.medication_cost) AS `Total Cost`, COUNT(DISTINCT DRUG_INTAKE_FACT.patient_id) AS `No of patients`, CAST(SUM(DRUG_INTAKE_FACT.medication_cost)/(COUNT(DISTINCT DRUG_INTAKE_FACT.patient_id)) AS DECIMAL(11,2)) AS `Average cost per patient`
+FROM DRUG_INTAKE_FACT 
+JOIN establishment ON DRUG_INTAKE_FACT.establishment_code=establishment.establishment_
+code GROUP BY `Hospital Name` ORDER BY `Average cost per patient` ASC;
+
+/* This query outputs which treatments have a particular drug associated with them and the quantity of that drug used for that treatment. */
+SELECT treatment.treatment_type AS `Treatment`, SUM(DRUG_INTAKE_FACT.medication_duration_days) AS `Medication Duration(Days)`, SUM(DRUG_INTAKE_FACT.medication_quantity) AS `Medication Quantity`, drug.drug_name AS `Drug Name`
+FROM DRUG_INTAKE_FACT
+JOIN treatment ON DRUG_INTAKE_FACT.treatment_id=treatment.treatment_id 
+JOIN drug on DRUG_INTAKE_FACT.drug_code=drug.drug_code
+GROUP BY `Drug Name` 
+HAVING `Medication Duration(Days)` >= 20 AND `Medication Duration(Days)` <= 200
+ORDER BY `Medication Duration(Days)` ASC;
+
+/* This particular query shows 2 groups of the similar data from different years and allows you to easily compare the two. */
+SELECT CONCAT(patient.patient_fname,' ',patient.patient_sname) AS `Patient Name`, SUM(DRUG_INTAKE_FACT. medication_quantity) AS `Medication quantity`, calendar.date_display AS `Date`
+FROM DRUG_INTAKE_FACT
+JOIN patient ON DRUG_INTAKE_FACT.patient_id=patient.patient_id
+JOIN calendar ON DRUG_INTAKE_FACT.calendar_id=calendar.date_id
+WHERE date_month >11 AND date_day >=21 AND date_year = 2017
+GROUP BY `Patient Name`
+UNION
+SELECT 'TOTAL', SUM(DRUG_INTAKE_FACT.medication_quantity), calendar.date_year
+FROM DRUG_INTAKE_FACT
+JOIN calendar ON DRUG_INTAKE_FACT.calendar_id=calendar.date_id
+WHERE date_month >11 AND date_day >=21 AND date_year = 2017
+UNION
+SELECT CONCAT(patient.patient_fname,' ',patient.patient_sname) AS `Patient Name`, SUM(DRUG_INTAKE_FACT. medication_quantity), calendar.date_display
+FROM DRUG_INTAKE_FACT
+JOIN patient ON DRUG_INTAKE_FACT.patient_id=patient.patient_id
+JOIN calendar ON DRUG_INTAKE_FACT.calendar_id=calendar.date_id
+WHERE date_month >11 AND date_day >=21 AND date_year = 2016
+GROUP BY `Patient Name`
+UNION
+SELECT 'TOTAL', SUM(DRUG_INTAKE_FACT.medication_quantity), calendar.date_year
+FROM DRUG_INTAKE_FACT
+JOIN calendar ON DRUG_INTAKE_FACT.calendar_id=calendar.date_id
+WHERE date_month >11 AND date_day >=21 AND date_year = 2016
+
+/*This query on ‘parient_operation_fact’ schema allows you to view each hospital and get the total number of minutes operated alongside with the total expected minutes operated.*/
+SELECT product.product_name AS `Product`,
+SUM(SALES_FACT.unitsSold) as `Amount sold`
+FROM SALES
+JOIN product on
+SALES_FACT.productID=product.productID
+JOIN Calendar on
+SALES_FACT.dateID=Calendar.dateID
+GROUP BY `Product`
+WHERE dateMonth =12 AND dateDay >=11 AND dateDay<25 AND dateYear = 2019
+ORDER BY `Amount sold` DESC
+LIMIT 10;                                                      
+SELECT establishment.establishment_name AS `Hospital Name`, SUM(patient_operation_fact.duration_mins_total) as `Total mins operated`, SUM(patient_operation_fact.duration_mins_expected) AS `Total expected mins operated`, SUM(patient_operation_fact.duration_mins_expected)-SUM(patient_operation_fact.duration_mins_total) AS `Difference`
+FROM patient_operation_fact
+JOIN establishment on patient_operation_fact.establishment_code=establishment.establishment_code
+GROUP BY `Hospital Name`
+HAVING `Difference` <0
+ORDER BY `Difference` ASC
+LIMIT 10;
+
+/*Not too dissimilar to the previous query, this query shows you the total minutes operated, total expected minutes operated, difference and a new addition quarter*/
+SELECT CONCAT(staff.staff_fname,' ',staff.staff_lname) AS `Staff Name`, staff.staff_specialization AS `Speciality`, SUM(patient_operation_fact.duration_mins_total) AS `Total mins operated`, SUM(patient_operation_fact.duration_mins_expected) AS `Total expected mins operated`, SUM(patient_operation_fact.duration_mins_expected)-SUM(patient_operation_fact.duration_mins_total) AS `Difference`, calendar.date_quarter AS `Quarter`
+FROM patient_operation_fact
+JOIN staff on patient_operation_fact.staff_id=staff.staff_id
+JOIN calendar on patient_operation_fact.date_id=calendar.date_id
+WHERE patient_operation_fact.staff_id = 67
+GROUP BY `Quarter` WITH ROLLUP;
+
